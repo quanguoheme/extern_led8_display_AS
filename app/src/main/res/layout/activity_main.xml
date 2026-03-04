@@ -25,19 +25,24 @@
         android:paddingLeft="16dp"
         android:paddingRight="16dp">
 
-        <ImageView
-            android:id="@+id/qrCodeImageView"
-            android:layout_width="300dp"
-            android:layout_height="300dp"
-            android:contentDescription="QR Code" />
+
+        <Spinner
+            android:id="@+id/spinner_sim"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:layout_gravity="fill_horizontal"
+            android:text="(switch sim slots)切换sim卡" />
+
 
         <TextView
-            android:id="@+id/qrContentTextView"
+            android:id="@+id/qrContentTextView2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="16dp"
             android:layout_gravity="center_vertical"
             android:textSize="14sp"
+            android:text="(switch sim slots)切换sim卡"
             android:textColor="#000000"
             android:padding="8dp" />
 
@@ -68,15 +73,11 @@
             android:layout_height="wrap_content"
             android:layout_columnWeight="1"
             android:layout_gravity="fill_horizontal"
-            android:text="测试led8" />
+            android:text="测试(test) led8" />
 
-        <Button
-            android:id="@+id/button4_sim"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_columnWeight="1"
-            android:layout_gravity="fill_horizontal"
-            android:text="切换副sim卡" />
+
+
+
 
         <Button
             android:id="@+id/button5_camera_led"
@@ -84,7 +85,7 @@
             android:layout_height="wrap_content"
             android:layout_columnWeight="1"
             android:layout_gravity="fill_horizontal"
-            android:text="摄像头补光灯" />
+            android:text="relay_test_继电器测试" />
 
     </GridLayout>
 

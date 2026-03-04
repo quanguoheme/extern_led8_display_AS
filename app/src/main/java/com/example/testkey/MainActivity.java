@@ -3,6 +3,7 @@ package com.example.testkey;
 import java.io.IOException;
 
 import android.os.Bundle;
+import android.os.Looper;
 import android.os.RemoteException;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -11,13 +12,18 @@ import android.content.res.Resources;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.Toast;
 import hdx.HdxUtil;
 
@@ -53,6 +59,8 @@ import android.graphics.Color;
 import android.widget.TextView;
 import android.os.Handler;
 
+import static java.lang.Thread.sleep;
+
 @SuppressLint("NewApi")
 public class MainActivity extends Activity {
 
@@ -64,8 +72,8 @@ public class MainActivity extends Activity {
     int flag_led=2;
 	 final static String TAG="TestKey";
     private static final String TAG_QR = "MainActivity";
-    private ImageView qrCodeImageView;
-    private TextView qrContentTextView;
+   // private ImageView qrCodeImageView;
+    //private TextView qrContentTextView;
     private String deviceInfo = "";
     private static final int CHECK_INTERVAL = 500; // 500ms
     private Handler mHandler = new Handler();
@@ -78,23 +86,32 @@ public class MainActivity extends Activity {
         Log.d(TAG, "test_led8__version_4");
 
         // Initialize views
-        qrCodeImageView = findViewById(R.id.qrCodeImageView);
-        qrContentTextView = findViewById(R.id.qrContentTextView);
+      //  qrCodeImageView = findViewById(R.id.qrCodeImageView);
+       // qrContentTextView = findViewById(R.id.qrContentTextView);
         
         // Start checking device info
         startDeviceInfoCheck();
 
-        // Camera LED button
+        // relay  test   继电器 测试
         button5_camera_led = (Button) findViewById(R.id.button5_camera_led);
         button5_camera_led.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                Log.d(TAG, "button5_camera_led()2 ");
-                HdxUtil.SetCameraBacklightness(flag_led);
-                if (flag_led == 2) {
-                    flag_led = 3;
-                } else {
-                    flag_led = 2;
-                }
+                Log.d(TAG, " relay  test setOnClickListener   ");
+
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        HdxUtil.SetKeyboardPower(1);
+                        try {
+                            sleep(444);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        HdxUtil.SetKeyboardPower(0);
+                    }
+                }).start();
+
+
             }
         });
 
@@ -107,11 +124,11 @@ public class MainActivity extends Activity {
             }
         });
 
-        // Button3 - LED8 Test
+        //
         final Button ButtonCodeDemo3 = (Button) findViewById(R.id.button3);
         ButtonCodeDemo3.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                Log.d(TAG, "ButtonCodeDemo3 flag:" + flag);
+
                 byte data[] = new byte[]{indexddd, indexddd, indexddd, indexddd};
                 HdxUtil.SetLed8Display(data);
                 ButtonCodeDemo3.setText("" + indexddd + "" + indexddd + "" + indexddd + "" + indexddd);
@@ -119,20 +136,88 @@ public class MainActivity extends Activity {
                 if (indexddd == 10) {
                     indexddd = 1;
                 }
+
+
+
             }
         });
 
+        spinner_sim_init();
+
+    }
+
+    void spinner_sim_init()
+    {
         // SIM card button
-        Button button4_sim = (Button) findViewById(R.id.button4_sim);
-        button4_sim.setOnClickListener(new OnClickListener() {
-            public void onClick(View v) {
-                Log.d(TAG, "button4_sim()2 ");
-                HdxUtil.SwitchSimCard(flag);
-                if (flag == 1) {
-                    flag = 0;
-                } else {
-                    flag = 1;
-                }
+        Spinner spinner_sim = (Spinner) findViewById(R.id.spinner_sim);
+        String[] items = {"SIM 1", "SIM 2", "SIM 3"};
+        ArrayAdapter<String> adapter = new ArrayAdapter(this,android.R.layout.simple_spinner_item,items);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner_sim.setAdapter(adapter);
+
+        spinner_sim.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(final AdapterView<?> parent, final  View view, final int position, final  long id) {
+               // handler.sendMessage(handler.obtainMessage(SHOW_PROGRESS, 1, 0,null));
+                //toast22(getApplicationContext(), "If there is only one PSAM slot, this spinner is meaningless.");
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                       // /sys/devices/platform/gpio-leds/leds/relay/brightness
+                        //all_str="psam_"+my_spinner_index+": ";
+                        runOnUiThread(
+                                new Runnable() {
+                                    public void run() {
+                                        toast22(getApplicationContext(), "  sim switch "+(position+1));
+                                    }
+                                });
+
+                        final  String selectedItem = (String) parent.getItemAtPosition(position);
+                        Log.d("ca1", "Selected item: " + selectedItem+",  position: "+position);
+							/*
+						String cmd ="echo "+my_spinner_index+" > /proc/hello_proc \n";
+						YFactoryApi.execFor7(cmd);
+						Log.d("ca1", "cmd : " + cmd);*/
+                        HdxUtil.SwitchSimCard(position+1);
+                        HdxUtil.SwitchICCard(1);
+                        try {
+                            sleep(500);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
+                        Log.d("","IC_Event_Proc_Thread 222 ");
+                        HdxUtil.SwitchICCard(0);
+                       // handler.sendMessage(handler.obtainMessage(HIDE_PROGRESS, 1, 0,null));
+
+                    }
+                }).start();
+
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // 什么都不做
+            }
+        });
+
+
+
+    }
+
+    private static Handler handler2 = new Handler(Looper.getMainLooper());
+
+    public static void toast22(final Context context, final String str) {
+        handler2.post(new Runnable() {
+            @Override
+            public void run() {
+                //  Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
+                Toast toast=Toast.makeText(context, str, Toast.LENGTH_SHORT);
+                toast.setGravity(Gravity.CENTER,0,200);
+                LinearLayout linearLayout = (LinearLayout) toast.getView();
+                TextView messageTextView = (TextView) linearLayout.getChildAt(0);
+                messageTextView.setTextSize(36);
+                toast.show();
             }
         });
     }
@@ -449,17 +534,7 @@ public class MainActivity extends Activity {
         }
         deviceInfo= info2.toString()+"\n";
         // Check if both IMEIs are valid
-        if (!TextUtils.isEmpty(imei1) && imei1.length() > 5 
-            && !TextUtils.isEmpty(imei2) && imei2.length() > 5) {
-            // Success - show info and QR code
-            qrContentTextView.setText( "@"+info.toString());
-            createQRCode(deviceInfo);
-            qrCodeImageView.setVisibility(View.VISIBLE);
-        } else {
-            // Failed - show "getting" message and hide QR code
-            qrContentTextView.setText("正在获取...");
-            qrCodeImageView.setVisibility(View.INVISIBLE);
-        }
+
     }
 
     private String getSystemProperty(String key, String defaultValue) {
@@ -487,7 +562,7 @@ public class MainActivity extends Activity {
                 }
             }
             
-            qrCodeImageView.setImageBitmap(bmp);
+            //qrCodeImageView.setImageBitmap(bmp);
         } catch (WriterException e) {
             Log.e(TAG_QR, "Error generating QR code: " + e.getMessage());
         }
@@ -498,7 +573,7 @@ public class MainActivity extends Activity {
             return;
         }
         isChecking = true;
-        qrContentTextView.setText("正在获取...");
+
         checkDeviceInfo();
     }
 
