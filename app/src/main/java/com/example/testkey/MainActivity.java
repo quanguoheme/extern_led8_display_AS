@@ -145,7 +145,7 @@ public class MainActivity extends Activity {
         spinner_sim_init();
 
     }
-
+    //sim 卡切换
     void spinner_sim_init()
     {
         // SIM card button
@@ -178,8 +178,9 @@ public class MainActivity extends Activity {
 						String cmd ="echo "+my_spinner_index+" > /proc/hello_proc \n";
 						YFactoryApi.execFor7(cmd);
 						Log.d("ca1", "cmd : " + cmd);*/
+
                         HdxUtil.SwitchSimCard(position+1);
-                        HdxUtil.SwitchICCard(1);
+                        HdxUtil.SetDB9Power(0);
                         try {
                             sleep(500);
                         } catch (InterruptedException e) {
@@ -187,7 +188,7 @@ public class MainActivity extends Activity {
                         }
 
                         Log.d("","IC_Event_Proc_Thread 222 ");
-                        HdxUtil.SwitchICCard(0);
+                        HdxUtil.SetDB9Power(1);
                        // handler.sendMessage(handler.obtainMessage(HIDE_PROGRESS, 1, 0,null));
 
                     }
