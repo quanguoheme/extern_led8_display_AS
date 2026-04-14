@@ -1,5 +1,6 @@
 package com.example.testkey;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -31,6 +32,7 @@ import hdx.HdxUtil;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
@@ -249,6 +251,7 @@ public class MainActivity extends Activity {
     private void startSimSwitchCheck(int simId) {
         checkingSimId = simId;
         simCheckStartTime = System.currentTimeMillis();
+        simCheckWorkerRunning = false;
         mHandler.removeCallbacks(mSimCheckRunnable);
         updateSimInfoText("SIM " + simId + " \u6b63\u5728\u5207\u6362\uff0c\u7b49\u5f85\u7cfb\u7edf\u72b6\u6001\u7a33\u5b9a...");
         checkSimSwitchState();
@@ -262,22 +265,51 @@ public class MainActivity extends Activity {
     };
 
     private void checkSimSwitchState() {
-        if (checkingSimId <= 0) {
+        if (checkingSimId <= 0 || simCheckWorkerRunning) {
             return;
         }
 
-        int targetSimId = checkingSimId;
-        int currentSim = getCurrentSimSafe();
-        boolean hardwareMatched = currentSim == targetSimId;
-        boolean hasPermission = hasReadPhoneStatePermission();
-        int simState = TelephonyManager.SIM_STATE_UNKNOWN;
-        String simStateText = "\u6743\u9650\u672a\u6388\u6743/\u53d7\u9650";
+        final int targetSimId = checkingSimId;
+        simCheckWorkerRunning = true;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final int currentSim = getCurrentSimSafe();
+                final boolean hasPermission = hasReadPhoneStatePermission();
+                int state = TelephonyManager.SIM_STATE_UNKNOWN;
+                String stateText = "\u6743\u9650\u672a\u6388\u6743/\u53d7\u9650";
 
-        if (hasPermission) {
-            simState = getSimStateSafe();
-            simStateText = simStateToText(simState);
+                if (hasPermission) {
+                    state = getSimStateSafe();
+                    stateText = simStateToText(state);
+                }
+
+                final int simState = state;
+                final String simStateText = stateText;
+                final long elapsed = System.currentTimeMillis() - simCheckStartTime;
+                final String telephonyRegistryText = getTelephonyRegistrySummarySafe();
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        handleSimCheckResult(targetSimId, currentSim, hasPermission, simState,
+                                simStateText, elapsed, telephonyRegistryText);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void handleSimCheckResult(int targetSimId, int currentSim, boolean hasPermission,
+                                      int simState, String simStateText, long elapsed,
+                                      String telephonyRegistryText) {
+        simCheckWorkerRunning = false;
+        if (targetSimId != checkingSimId || checkingSimId <= 0) {
+            return;
         }
-
+        currentSim=targetSimId;
+        boolean hardwareMatched = currentSim == targetSimId;
+        boolean hardwareUnknown = currentSim < 0;
         boolean hasReadySim = simState == TelephonyManager.SIM_STATE_READY;
         boolean hasErrorSim = simState == TelephonyManager.SIM_STATE_PIN_REQUIRED
                 || simState == TelephonyManager.SIM_STATE_PUK_REQUIRED
@@ -286,25 +318,36 @@ public class MainActivity extends Activity {
                 || simState == TelephonyManager.SIM_STATE_CARD_IO_ERROR
                 || simState == TelephonyManager.SIM_STATE_CARD_RESTRICTED;
         boolean noSim = simState == TelephonyManager.SIM_STATE_ABSENT;
-        long elapsed = System.currentTimeMillis() - simCheckStartTime;
 
         Log.d(TAG, "checkSimSwitchState targetSim=" + targetSimId
                 + ", currentSim=" + currentSim
                 + ", simState=" + simStateText
-                + ", elapsed=" + elapsed);
+                + ", elapsed=" + elapsed
+                + ", telephonyRegistry=" + telephonyRegistryText);
 
         if (hardwareMatched && hasReadySim) {
-            updateSimInfoText("SIM " + targetSimId + " \u5207\u6362\u6210\u529f\uff0c\u6709 SIM \u5361\u3002\n"
+            updateSimInfoText("SIM " + targetSimId   + "\n"
+                   // + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "dumpsys: " + telephonyRegistryText);
+            checkingSimId = -1;
+            return;
+        }
+
+        if (hardwareUnknown && hasReadySim) {
+            updateSimInfoText("SIM " + targetSimId   + "\n"
                     + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
         }
 
         if (hardwareMatched && noSim) {
-            updateSimInfoText("SIM " + targetSimId + " \u5df2\u5207\u6362\uff0c\u4f46\u672a\u68c0\u6d4b\u5230 SIM \u5361\u3002\n"
+            updateSimInfoText("SIM " + targetSimId   + "\n"
                     + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
         }
@@ -312,7 +355,8 @@ public class MainActivity extends Activity {
         if (hardwareMatched && hasErrorSim) {
             updateSimInfoText("SIM " + targetSimId + " \u5df2\u5207\u6362\uff0c\u6709 SIM \u5361\u4f46\u72b6\u6001\u5f02\u5e38\u3002\n"
                     + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
         }
@@ -320,7 +364,8 @@ public class MainActivity extends Activity {
         if (hardwareMatched && !hasPermission) {
             updateSimInfoText("SIM " + targetSimId + " \u5df2\u5207\u6362\uff0c\u7535\u8bdd\u6808 SIM \u72b6\u6001\u53d7\u9650\u3002\n"
                     + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
         }
@@ -328,14 +373,16 @@ public class MainActivity extends Activity {
         if (elapsed >= SIM_CHECK_TIMEOUT) {
             updateSimInfoText("SIM " + targetSimId + " \u5207\u6362\u68c0\u6d4b\u8d85\u65f6\u3002\n"
                     + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
         }
 
         updateSimInfoText("SIM " + targetSimId + " \u6b63\u5728\u5207\u6362...\n"
                 + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+                + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                + "dumpsys: " + telephonyRegistryText);
         mHandler.postDelayed(mSimCheckRunnable, SIM_CHECK_INTERVAL);
     }
 
@@ -367,6 +414,15 @@ public class MainActivity extends Activity {
             Log.e(TAG, "getSimState failed: " + e.getMessage());
             return TelephonyManager.SIM_STATE_UNKNOWN;
         }
+    }
+
+    private String getTelephonyRegistrySummarySafe() {
+
+
+            String command = "dumpsys telephony.registry 2>&1 | grep -E \"Phone Id=|mServiceState=|mTelephonyDisplayInfo=|mActiveDataSubId=|mDefaultSubId=|Security|Exception|Permission|denied\" | head -n 8";
+
+
+           return   execCommand(command);
     }
 
     private String simStateToText(int simState) {
@@ -816,6 +872,48 @@ public class MainActivity extends Activity {
         mHandler.removeCallbacks(mSimCheckRunnable);
         isChecking = false;
         checkingSimId = -1;
+    }
+    public static String execCommand(String cmd){
+        Process process = null;
+        DataOutputStream os = null;
+        String sucmd= "su";
+        String msg="";
+        try{
+            process = Runtime.getRuntime().exec(sucmd);
+            os = new DataOutputStream(process.getOutputStream());
+            os.writeBytes(cmd+"\n");
+            os.flush();
+            os.writeBytes("exit\n");
+            os.flush();
+
+            String line;
+
+            //Log.i(TAG, "execCommand: " + "BufferedReader");
+            BufferedReader bufferedReader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()));
+
+            //Log.i(TAG, "bufferedReader: " + "BufferedReader readLine");
+            while ((line = bufferedReader.readLine()) != null) {
+                msg+=line+"\n";
+                Log.i(TAG, "bufferedReader read: " + line);
+            }
+            // Log.i(TAG, "waitFor");
+            process.waitFor();
+            // Log.i(TAG, "waitFor END");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return msg;
+        } finally {
+            try {
+                if (os != null)   {
+                    os.close();
+                }
+                process.destroy();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return msg;
     }
 
 }
