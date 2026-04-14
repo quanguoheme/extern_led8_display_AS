@@ -1,6 +1,8 @@
 package com.example.testkey;
 
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 import android.os.Bundle;
 import android.os.Looper;
@@ -31,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 
  
 
@@ -76,8 +79,15 @@ public class MainActivity extends Activity {
     //private TextView qrContentTextView;
     private String deviceInfo = "";
     private static final int CHECK_INTERVAL = 500; // 500ms
+    private static final int REQUEST_READ_PHONE_STATE = 1001;
+    private static final int SIM_CHECK_INTERVAL = 1000;
+    private static final int SIM_CHECK_TIMEOUT = 300000;
     private Handler mHandler = new Handler();
     private boolean isChecking = false;
+    private TextView simInfoTextView;
+    private int checkingSimId = -1;
+    private long simCheckStartTime = 0;
+    private boolean simCheckWorkerRunning = false;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +98,8 @@ public class MainActivity extends Activity {
         // Initialize views
       //  qrCodeImageView = findViewById(R.id.qrCodeImageView);
        // qrContentTextView = findViewById(R.id.qrContentTextView);
+        simInfoTextView = (TextView) findViewById(R.id.qrContentTextView2);
+        requestReadPhoneStateIfNeeded();
         
         // Start checking device info
         startDeviceInfoCheck();
@@ -173,13 +185,14 @@ public class MainActivity extends Activity {
                                 });
 
                         final  String selectedItem = (String) parent.getItemAtPosition(position);
+                        final int simId = position + 1;
                         Log.d("ca1", "Selected item: " + selectedItem+",  position: "+position);
 							/*
 						String cmd ="echo "+my_spinner_index+" > /proc/hello_proc \n";
 						YFactoryApi.execFor7(cmd);
 						Log.d("ca1", "cmd : " + cmd);*/
 
-                        HdxUtil.SwitchSimCard(position+1);
+                        HdxUtil.SwitchSimCard(simId);
                         HdxUtil.SetDB9Power(0);
                         try {
                             sleep(500);
@@ -189,6 +202,12 @@ public class MainActivity extends Activity {
 
                         Log.d("","IC_Event_Proc_Thread 222 ");
                         HdxUtil.SetDB9Power(1);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                startSimSwitchCheck(simId);
+                            }
+                        });
                        // handler.sendMessage(handler.obtainMessage(HIDE_PROGRESS, 1, 0,null));
 
                     }
@@ -204,6 +223,184 @@ public class MainActivity extends Activity {
 
 
 
+    }
+
+    private void requestReadPhoneStateIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.READ_PHONE_STATE}, REQUEST_READ_PHONE_STATE);
+        } else {
+            updateSimInfoText("READ_PHONE_STATE \u5df2\u6388\u6743\uff0c\u7b49\u5f85\u5207\u6362 SIM\u3002");
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_READ_PHONE_STATE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                updateSimInfoText("READ_PHONE_STATE \u5df2\u6388\u6743\uff0c\u7b49\u5f85\u5207\u6362 SIM\u3002");
+            } else {
+                updateSimInfoText("READ_PHONE_STATE \u672a\u6388\u6743\uff0c\u7535\u8bdd\u6808 SIM \u72b6\u6001\u53d7\u9650\u3002");
+            }
+        }
+    }
+
+    private void startSimSwitchCheck(int simId) {
+        checkingSimId = simId;
+        simCheckStartTime = System.currentTimeMillis();
+        mHandler.removeCallbacks(mSimCheckRunnable);
+        updateSimInfoText("SIM " + simId + " \u6b63\u5728\u5207\u6362\uff0c\u7b49\u5f85\u7cfb\u7edf\u72b6\u6001\u7a33\u5b9a...");
+        checkSimSwitchState();
+    }
+
+    private final Runnable mSimCheckRunnable = new Runnable() {
+        @Override
+        public void run() {
+            checkSimSwitchState();
+        }
+    };
+
+    private void checkSimSwitchState() {
+        if (checkingSimId <= 0) {
+            return;
+        }
+
+        int targetSimId = checkingSimId;
+        int currentSim = getCurrentSimSafe();
+        boolean hardwareMatched = currentSim == targetSimId;
+        boolean hasPermission = hasReadPhoneStatePermission();
+        int simState = TelephonyManager.SIM_STATE_UNKNOWN;
+        String simStateText = "\u6743\u9650\u672a\u6388\u6743/\u53d7\u9650";
+
+        if (hasPermission) {
+            simState = getSimStateSafe();
+            simStateText = simStateToText(simState);
+        }
+
+        boolean hasReadySim = simState == TelephonyManager.SIM_STATE_READY;
+        boolean hasErrorSim = simState == TelephonyManager.SIM_STATE_PIN_REQUIRED
+                || simState == TelephonyManager.SIM_STATE_PUK_REQUIRED
+                || simState == TelephonyManager.SIM_STATE_NETWORK_LOCKED
+                || simState == TelephonyManager.SIM_STATE_PERM_DISABLED
+                || simState == TelephonyManager.SIM_STATE_CARD_IO_ERROR
+                || simState == TelephonyManager.SIM_STATE_CARD_RESTRICTED;
+        boolean noSim = simState == TelephonyManager.SIM_STATE_ABSENT;
+        long elapsed = System.currentTimeMillis() - simCheckStartTime;
+
+        Log.d(TAG, "checkSimSwitchState targetSim=" + targetSimId
+                + ", currentSim=" + currentSim
+                + ", simState=" + simStateText
+                + ", elapsed=" + elapsed);
+
+        if (hardwareMatched && hasReadySim) {
+            updateSimInfoText("SIM " + targetSimId + " \u5207\u6362\u6210\u529f\uff0c\u6709 SIM \u5361\u3002\n"
+                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+            checkingSimId = -1;
+            return;
+        }
+
+        if (hardwareMatched && noSim) {
+            updateSimInfoText("SIM " + targetSimId + " \u5df2\u5207\u6362\uff0c\u4f46\u672a\u68c0\u6d4b\u5230 SIM \u5361\u3002\n"
+                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+            checkingSimId = -1;
+            return;
+        }
+
+        if (hardwareMatched && hasErrorSim) {
+            updateSimInfoText("SIM " + targetSimId + " \u5df2\u5207\u6362\uff0c\u6709 SIM \u5361\u4f46\u72b6\u6001\u5f02\u5e38\u3002\n"
+                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+            checkingSimId = -1;
+            return;
+        }
+
+        if (hardwareMatched && !hasPermission) {
+            updateSimInfoText("SIM " + targetSimId + " \u5df2\u5207\u6362\uff0c\u7535\u8bdd\u6808 SIM \u72b6\u6001\u53d7\u9650\u3002\n"
+                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+            checkingSimId = -1;
+            return;
+        }
+
+        if (elapsed >= SIM_CHECK_TIMEOUT) {
+            updateSimInfoText("SIM " + targetSimId + " \u5207\u6362\u68c0\u6d4b\u8d85\u65f6\u3002\n"
+                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+            checkingSimId = -1;
+            return;
+        }
+
+        updateSimInfoText("SIM " + targetSimId + " \u6b63\u5728\u5207\u6362...\n"
+                + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
+                + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText);
+        mHandler.postDelayed(mSimCheckRunnable, SIM_CHECK_INTERVAL);
+    }
+
+    private boolean hasReadPhoneStatePermission() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+                || checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private int getCurrentSimSafe() {
+        try {
+            return HdxUtil.GetCurrentSim();
+        } catch (Throwable e) {
+            Log.e(TAG, "GetCurrentSim failed: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    private int getSimStateSafe() {
+        try {
+            TelephonyManager telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+            if (telephonyManager == null) {
+                return TelephonyManager.SIM_STATE_UNKNOWN;
+            }
+            return telephonyManager.getSimState();
+        } catch (SecurityException e) {
+            Log.e(TAG, "getSimState no permission: " + e.getMessage());
+            return TelephonyManager.SIM_STATE_UNKNOWN;
+        } catch (Throwable e) {
+            Log.e(TAG, "getSimState failed: " + e.getMessage());
+            return TelephonyManager.SIM_STATE_UNKNOWN;
+        }
+    }
+
+    private String simStateToText(int simState) {
+        switch (simState) {
+            case TelephonyManager.SIM_STATE_ABSENT:
+                return "ABSENT \u672a\u68c0\u6d4b\u5230 SIM \u5361";
+            case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
+                return "NETWORK_LOCKED \u7f51\u7edc\u9501\u5b9a";
+            case TelephonyManager.SIM_STATE_PIN_REQUIRED:
+                return "PIN_REQUIRED \u9700\u8981 PIN";
+            case TelephonyManager.SIM_STATE_PUK_REQUIRED:
+                return "PUK_REQUIRED \u9700\u8981 PUK";
+            case TelephonyManager.SIM_STATE_READY:
+                return "READY \u6709 SIM \u5361\u5e76\u53ef\u7528";
+            case TelephonyManager.SIM_STATE_NOT_READY:
+                return "NOT_READY \u5207\u6362\u4e2d/\u672a\u5c31\u7eea";
+            case TelephonyManager.SIM_STATE_PERM_DISABLED:
+                return "PERM_DISABLED \u6c38\u4e45\u7981\u7528";
+            case TelephonyManager.SIM_STATE_CARD_IO_ERROR:
+                return "CARD_IO_ERROR \u5361 IO \u5f02\u5e38";
+            case TelephonyManager.SIM_STATE_CARD_RESTRICTED:
+                return "CARD_RESTRICTED \u5361\u53d7\u9650";
+            case TelephonyManager.SIM_STATE_UNKNOWN:
+            default:
+                return "UNKNOWN \u672a\u77e5/\u5207\u6362\u4e2d";
+        }
+    }
+
+    private void updateSimInfoText(final String text) {
+        Log.d(TAG, text);
+        if (simInfoTextView == null) {
+            return;
+        }
+        simInfoTextView.setText(text);
     }
 
     private static Handler handler2 = new Handler(Looper.getMainLooper());
@@ -616,7 +813,9 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         mHandler.removeCallbacks(mCheckRunnable);
+        mHandler.removeCallbacks(mSimCheckRunnable);
         isChecking = false;
+        checkingSimId = -1;
     }
 
 }

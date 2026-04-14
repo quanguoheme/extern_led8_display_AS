@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.extern_led8_display_for_sc200_gc111">
+
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     
     <application
         android:allowBackup="true"
