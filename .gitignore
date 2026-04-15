@@ -1,3 +1,4 @@
+release/
 *.apk
 *.iml
 .gradle

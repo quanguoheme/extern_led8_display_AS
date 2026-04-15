@@ -90,6 +90,7 @@ public class MainActivity extends Activity {
     private int checkingSimId = -1;
     private long simCheckStartTime = 0;
     private boolean simCheckWorkerRunning = false;
+    private boolean simPowerResetRunning = false;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,15 +196,7 @@ public class MainActivity extends Activity {
 						Log.d("ca1", "cmd : " + cmd);*/
 
                         HdxUtil.SwitchSimCard(simId);
-                        HdxUtil.SetDB9Power(0);
-                        try {
-                            sleep(500);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-
-                        Log.d("","IC_Event_Proc_Thread 222 ");
-                        HdxUtil.SetDB9Power(1);
+                        reset_sim_slot_power();
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -225,6 +218,18 @@ public class MainActivity extends Activity {
 
 
 
+    }
+    void reset_sim_slot_power()
+    {
+        HdxUtil.SetDB9Power(0);
+        try {
+            sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        Log.d("","IC_Event_Proc_Thread 222 ");
+        HdxUtil.SetDB9Power(1);
     }
 
     private void requestReadPhoneStateIfNeeded() {
@@ -315,7 +320,6 @@ public class MainActivity extends Activity {
                 || simState == TelephonyManager.SIM_STATE_PUK_REQUIRED
                 || simState == TelephonyManager.SIM_STATE_NETWORK_LOCKED
                 || simState == TelephonyManager.SIM_STATE_PERM_DISABLED
-                || simState == TelephonyManager.SIM_STATE_CARD_IO_ERROR
                 || simState == TelephonyManager.SIM_STATE_CARD_RESTRICTED;
         boolean noSim = simState == TelephonyManager.SIM_STATE_ABSENT;
 
@@ -325,10 +329,15 @@ public class MainActivity extends Activity {
                 + ", elapsed=" + elapsed
                 + ", telephonyRegistry=" + telephonyRegistryText);
 
+        if (simState == TelephonyManager.SIM_STATE_CARD_IO_ERROR) {
+            reset_sim_slot_power(targetSimId, simStateText, telephonyRegistryText);
+            return;
+        }
+
         if (hardwareMatched && hasReadySim) {
             updateSimInfoText("SIM " + targetSimId   + "\n"
                    // + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001 ( SIM status): " + simStateText + "\n"
                     + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
@@ -336,8 +345,8 @@ public class MainActivity extends Activity {
 
         if (hardwareUnknown && hasReadySim) {
             updateSimInfoText("SIM " + targetSimId   + "\n"
-                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "\u5f53\u524d\u786c\u4ef6 ( SIM  ): " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001 ( SIM status): " + simStateText + "\n"
                     + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
@@ -345,8 +354,8 @@ public class MainActivity extends Activity {
 
         if (hardwareMatched && noSim) {
             updateSimInfoText("SIM " + targetSimId   + "\n"
-                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "\u5f53\u524d\u786c\u4ef6 ( SIM ): " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001 ( SIM status): " + simStateText + "\n"
                     + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
@@ -354,8 +363,8 @@ public class MainActivity extends Activity {
 
         if (hardwareMatched && hasErrorSim) {
             updateSimInfoText("SIM " + targetSimId + " \u5df2\u5207\u6362\uff0c\u6709 SIM \u5361\u4f46\u72b6\u6001\u5f02\u5e38\u3002\n"
-                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "\u5f53\u524d\u786c\u4ef6 ( SIM  ): " + currentSim + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001 ( SIM status): " + simStateText + "\n"
                     + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
@@ -363,7 +372,7 @@ public class MainActivity extends Activity {
 
         if (hardwareMatched && !hasPermission) {
             updateSimInfoText("SIM " + targetSimId + " \u5df2\u5207\u6362\uff0c\u7535\u8bdd\u6808 SIM \u72b6\u6001\u53d7\u9650\u3002\n"
-                    + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
+                    + "\u5f53\u524d\u786c\u4ef6 ( SIM status): " + currentSim + "\n"
                     + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
                     + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
@@ -373,7 +382,7 @@ public class MainActivity extends Activity {
         if (elapsed >= SIM_CHECK_TIMEOUT) {
             updateSimInfoText("SIM " + targetSimId + " \u5207\u6362\u68c0\u6d4b\u8d85\u65f6\u3002\n"
                     + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                    + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                    + "\u7535\u8bdd\u6808\u72b6\u6001 ( SIM status): " + simStateText + "\n"
                     + "dumpsys: " + telephonyRegistryText);
             checkingSimId = -1;
             return;
@@ -381,9 +390,42 @@ public class MainActivity extends Activity {
 
         updateSimInfoText("SIM " + targetSimId + " \u6b63\u5728\u5207\u6362...\n"
                 + "\u5f53\u524d\u786c\u4ef6 SIM: " + currentSim + "\n"
-                + "\u7535\u8bdd\u6808\u72b6\u6001: " + simStateText + "\n"
+                + "\u7535\u8bdd\u6808\u72b6\u6001 ( SIM status) : " + simStateText + "\n"
                 + "dumpsys: " + telephonyRegistryText);
         mHandler.postDelayed(mSimCheckRunnable, SIM_CHECK_INTERVAL);
+    }
+
+    private void reset_sim_slot_power(final int targetSimId, final String simStateText, final String telephonyRegistryText) {
+        if (simPowerResetRunning) {
+            mHandler.postDelayed(mSimCheckRunnable, SIM_CHECK_INTERVAL);
+            return;
+        }
+        simPowerResetRunning = true;
+        mHandler.removeCallbacks(mSimCheckRunnable);
+        updateSimInfoText("SIM " + targetSimId + " CARD_IO_ERROR, \u6b63\u5728\u590d\u4f4d SIM \u69fd\u4f9b\u7535...\n"
+                + "\u7535\u8bdd\u6808\u72b6\u6001 ( SIM status): " + simStateText + "\n"
+                + "dumpsys: " + telephonyRegistryText);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    reset_sim_slot_power();
+                    sleep(1500);
+                } catch (Throwable e) {
+                    Log.e(TAG, "reset_sim_slot_power failed: " + e.getMessage());
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        simPowerResetRunning = false;
+                        if (checkingSimId == targetSimId) {
+                            updateSimInfoText("SIM " + targetSimId + " SIM \u69fd\u4f9b\u7535\u5df2\u590d\u4f4d\uff0c\u7ee7\u7eed\u68c0\u6d4b...");
+                            checkSimSwitchState();
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 
     private boolean hasReadPhoneStatePermission() {
@@ -872,6 +914,7 @@ public class MainActivity extends Activity {
         mHandler.removeCallbacks(mSimCheckRunnable);
         isChecking = false;
         checkingSimId = -1;
+        simPowerResetRunning = false;
     }
     public static String execCommand(String cmd){
         Process process = null;
