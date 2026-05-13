@@ -134,7 +134,7 @@ public class MainActivity extends Activity {
         Button ButtonCodeDemo2 = (Button) findViewById(R.id.button2);
         ButtonCodeDemo2.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                byte data[] = new byte[]{'8','.', '8','.', '8','.', '8'};
+                byte data[] = new byte[]{  '8','.', '8','.', '8'};
                 HdxUtil.SetLed8Display(data);
             }
         });
@@ -144,9 +144,9 @@ public class MainActivity extends Activity {
         ButtonCodeDemo3.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
 
-                byte data[] = new byte[]{indexddd, indexddd, indexddd, indexddd};
+                byte data[] = new byte[]{indexddd, indexddd, indexddd};
                 HdxUtil.SetLed8Display(data);
-                ButtonCodeDemo3.setText("" + indexddd + "" + indexddd + "" + indexddd + "" + indexddd);
+                ButtonCodeDemo3.setText("" + indexddd + "" + indexddd + "" + indexddd  );
                 indexddd++;
                 if (indexddd == 10) {
                     indexddd = 1;

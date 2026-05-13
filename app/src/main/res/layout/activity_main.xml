@@ -65,7 +65,7 @@
             android:layout_height="wrap_content"
             android:layout_columnWeight="1"
             android:layout_gravity="fill_horizontal"
-            android:text="显示8888" />
+            android:text="显示8.8.8" />
 
         <Button
             android:id="@+id/button3"
