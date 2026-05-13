@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">extern_led8_display-for-sc200-gc111</string>
+    <string name="power_status_ac_charging">AC 插入 充电中</string>
+    <string name="power_status_ac_full">AC 插入 已充满</string>
+    <string name="power_status_ac_plugged_not_charging">AC 插入 未充电</string>
+    <string name="power_status_ac_unplugged_not_charging">AC 未插入 未充电</string>
+    <string name="acc_status_plugged">ACC插入</string>
+    <string name="acc_status_unplugged">ACC未插入</string>
+</resources>

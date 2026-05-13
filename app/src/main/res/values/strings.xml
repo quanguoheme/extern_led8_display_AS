@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">extern_led8_display-for-sc200-gc111</string>
+    <string name="power_status_ac_charging">AC plugged, charging</string>
+    <string name="power_status_ac_full">AC plugged, full</string>
+    <string name="power_status_ac_plugged_not_charging">AC plugged, not charging</string>
+    <string name="power_status_ac_unplugged_not_charging">AC unplugged, not charging</string>
+    <string name="acc_status_plugged">ACC plugged</string>
+    <string name="acc_status_unplugged">ACC unplugged</string>
 </resources>

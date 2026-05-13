@@ -10,10 +10,14 @@ import android.os.Looper;
 import android.os.RemoteException;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
+import android.os.BatteryManager;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -84,13 +88,30 @@ public class MainActivity extends Activity {
     private static final int REQUEST_READ_PHONE_STATE = 1001;
     private static final int SIM_CHECK_INTERVAL = 1000;
     private static final int SIM_CHECK_TIMEOUT = 300000;
+    private static final int ACC_CHECK_INTERVAL = 1000;
     private Handler mHandler = new Handler();
     private boolean isChecking = false;
     private TextView simInfoTextView;
+    private TextView powerStatusTextView;
+    private TextView accStatusTextView;
     private int checkingSimId = -1;
     private long simCheckStartTime = 0;
     private boolean simCheckWorkerRunning = false;
     private boolean simPowerResetRunning = false;
+    private boolean powerReceiverRegistered = false;
+    private final BroadcastReceiver mPowerStatusReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            updatePowerStatusFromIntent(intent);
+        }
+    };
+    private final Runnable mAccStatusRunnable = new Runnable() {
+        @Override
+        public void run() {
+            updateAccStatus();
+            mHandler.postDelayed(this, ACC_CHECK_INTERVAL);
+        }
+    };
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,6 +123,10 @@ public class MainActivity extends Activity {
       //  qrCodeImageView = findViewById(R.id.qrCodeImageView);
        // qrContentTextView = findViewById(R.id.qrContentTextView);
         simInfoTextView = (TextView) findViewById(R.id.qrContentTextView2);
+        powerStatusTextView = (TextView) findViewById(R.id.textview_poower);
+        accStatusTextView = (TextView) findViewById(R.id.textview_acc_status);
+        updatePowerStatusText(R.string.power_status_ac_unplugged_not_charging);
+        updateAccStatus();
         requestReadPhoneStateIfNeeded();
         
         // Start checking device info
@@ -160,6 +185,102 @@ public class MainActivity extends Activity {
         spinner_sim_init();
 
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerPowerStatusReceiver();
+        startAccStatusCheck();
+    }
+
+    @Override
+    protected void onPause() {
+        stopAccStatusCheck();
+        unregisterPowerStatusReceiver();
+        super.onPause();
+    }
+
+    private void registerPowerStatusReceiver() {
+        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        if (!powerReceiverRegistered) {
+            Intent batteryStatus = registerReceiver(mPowerStatusReceiver, filter);
+            powerReceiverRegistered = true;
+            updatePowerStatusFromIntent(batteryStatus);
+        } else {
+            Intent batteryStatus = registerReceiver(null, filter);
+            updatePowerStatusFromIntent(batteryStatus);
+        }
+    }
+
+    private void unregisterPowerStatusReceiver() {
+        if (!powerReceiverRegistered) {
+            return;
+        }
+        try {
+            unregisterReceiver(mPowerStatusReceiver);
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "unregister power receiver failed: " + e.getMessage());
+        } finally {
+            powerReceiverRegistered = false;
+        }
+    }
+
+    private void updatePowerStatusFromIntent(Intent intent) {
+        if (intent == null) {
+            updatePowerStatusText(R.string.power_status_ac_unplugged_not_charging);
+            return;
+        }
+
+        int plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0);
+        int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, BatteryManager.BATTERY_STATUS_UNKNOWN);
+        boolean acPlugged = plugged == BatteryManager.BATTERY_PLUGGED_AC;
+
+        if (acPlugged && status == BatteryManager.BATTERY_STATUS_CHARGING) {
+            updatePowerStatusText(R.string.power_status_ac_charging);
+        } else if (acPlugged && status == BatteryManager.BATTERY_STATUS_FULL) {
+            updatePowerStatusText(R.string.power_status_ac_full);
+        } else if (acPlugged) {
+            updatePowerStatusText(R.string.power_status_ac_plugged_not_charging);
+        } else {
+            updatePowerStatusText(R.string.power_status_ac_unplugged_not_charging);
+        }
+    }
+
+    private void updatePowerStatusText(int resId) {
+        if (powerStatusTextView == null) {
+            return;
+        }
+        powerStatusTextView.setText(resId);
+    }
+
+    private void startAccStatusCheck() {
+        mHandler.removeCallbacks(mAccStatusRunnable);
+        updateAccStatus();
+        mHandler.postDelayed(mAccStatusRunnable, ACC_CHECK_INTERVAL);
+    }
+
+    private void stopAccStatusCheck() {
+        mHandler.removeCallbacks(mAccStatusRunnable);
+    }
+
+    private void updateAccStatus() {
+        int scanResult = -1;
+        try {
+            scanResult = HdxUtil.PowerOffScan();
+        } catch (Throwable e) {
+            Log.e(TAG, "PowerOffScan failed: " + e.getMessage());
+        }
+
+        if (accStatusTextView == null) {
+            return;
+        }
+        if (scanResult == 1) {
+            accStatusTextView.setText(R.string.acc_status_plugged);
+        } else {
+            accStatusTextView.setText(R.string.acc_status_unplugged);
+        }
+    }
+
     //sim 卡切换
     void spinner_sim_init()
     {
@@ -912,6 +1033,8 @@ public class MainActivity extends Activity {
         super.onDestroy();
         mHandler.removeCallbacks(mCheckRunnable);
         mHandler.removeCallbacks(mSimCheckRunnable);
+        mHandler.removeCallbacks(mAccStatusRunnable);
+        unregisterPowerStatusReceiver();
         isChecking = false;
         checkingSimId = -1;
         simPowerResetRunning = false;
