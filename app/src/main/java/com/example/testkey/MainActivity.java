@@ -615,11 +615,17 @@ public class MainActivity extends Activity {
     }
 
     private void updateSimInfoText(final String text) {
+        if(TextUtils.isEmpty(text))
+        {
+            return;
+        }
         Log.d(TAG, text);
         if (simInfoTextView == null) {
             return;
         }
-        simInfoTextView.setText(text);
+
+        final String displayText = text.length() > 11 ? text.substring(0, 11) : text;
+        simInfoTextView.setText(displayText);
     }
 
     private static Handler handler2 = new Handler(Looper.getMainLooper());
