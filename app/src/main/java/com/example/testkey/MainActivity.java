@@ -131,7 +131,7 @@ public class MainActivity extends Activity {
         // Start checking QR data
         startDeviceInfoCheck();
 
-        // relay  test   继电器 测试
+        // Relay test
         button5_camera_led = (Button) findViewById(R.id.button5_camera_led);
         button5_camera_led.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
@@ -307,7 +307,7 @@ public class MainActivity extends Activity {
             qrCodeImageView.setVisibility(View.INVISIBLE);
         }
         if (qrContentTextView != null) {
-            qrContentTextView.setText("IMEI 未就绪，10 秒后重试");
+            qrContentTextView.setText("IMEI not ready, retry in 10 seconds");
         }
     }
 
@@ -320,7 +320,7 @@ public class MainActivity extends Activity {
         return "SN: " + serialNumber + ",IMEI: " + imei + "\n";
     }
 
-    //sim 卡切换
+    // SIM card switching
     void spinner_sim_init()
     {
         // SIM card button
@@ -372,7 +372,7 @@ public class MainActivity extends Activity {
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-                // 什么都不做
+                // Do nothing
             }
         });
 
@@ -727,10 +727,10 @@ public class MainActivity extends Activity {
 		
 		 DisplayMetrics metric = new DisplayMetrics();
 	        getWindowManager().getDefaultDisplay().getMetrics(metric);
-	        int width = metric.widthPixels;  // 灞忓箷瀹藉害锛堝儚绱狅級
-	        int height = metric.heightPixels;  // 灞忓箷楂樺害锛堝儚绱狅級
-	        float density = metric.density;  // 灞忓箷瀵嗗害锛�0.75 / 1.0 / 1.5锛�
-	        int densityDpi = metric.densityDpi;  // 灞忓箷瀵嗗害DPI锛�120 / 160 / 240锛�
+	        int width = metric.widthPixels;  // Screen width in pixels
+	        int height = metric.heightPixels;  // Screen height in pixels
+	        float density = metric.density;  // Screen density (0.75 / 1.0 / 1.5)
+	        int densityDpi = metric.densityDpi;  // Screen density DPI (120 / 160 / 240)
 		
 		
 		
@@ -901,19 +901,19 @@ public class MainActivity extends Activity {
             public void run() {
                 try {
                 	Log.d(TAG,"shutDown");
-                    //获得ServiceManager类
+                    // Get ServiceManager class
                     Class<?> ServiceManager = Class.forName("android.os.ServiceManager");
-                    //获得ServiceManager的getService方法
+                    // Get ServiceManager.getService method
                     Method getService = ServiceManager.getMethod("getService", String.class);
-                    //调用getService获取RemoteService
+                    // Invoke getService to obtain the remote service
                     Object oRemoteService = getService.invoke(null, Context.POWER_SERVICE);
-                    //获得IPowerManager.Stub类
+                    // Get IPowerManager.Stub class
                     Class<?> cStub = Class.forName("android.os.IPowerManager$Stub");
-                    //获得asInterface方法
+                    // Get asInterface method
                     Method asInterface = cStub.getMethod("asInterface", IBinder.class);
-                    //调用asInterface方法获取IPowerManager对象
+                    // Invoke asInterface to obtain IPowerManager
                     Object oIPowerManager = asInterface.invoke(null, oRemoteService);
-                    //获得并调用shutdown()方法
+                    // Invoke shutdown()
                     Method shutdown;
                     //String model = DeviceUtils.getModel();
                    // if (model.equals(Constant.MODEL_QD21_WX) || model.equals(Constant.MODEL_QD21_L)) {

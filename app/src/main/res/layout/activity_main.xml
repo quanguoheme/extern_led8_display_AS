@@ -34,7 +34,7 @@
                 android:layout_width="160dp"
                 android:layout_height="160dp"
                 android:layout_marginEnd="12dp"
-                android:contentDescription="二维码"
+                android:contentDescription="QR code"
                 android:scaleType="fitCenter"
                 tools:src="@android:drawable/ic_menu_gallery" />
 
@@ -48,7 +48,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="设备二维码"
+                    android:text="Device QR Code"
                     android:textColor="#000000"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -62,7 +62,7 @@
                     android:textSize="12sp"
                     android:maxLines="4"
                     android:ellipsize="end"
-                    android:text="二维码内容" />
+                    android:text="QR content" />
             </LinearLayout>
         </LinearLayout>
 
@@ -112,7 +112,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                android:text="(switch sim slots)切换sim卡" />
+                android:text="(switch sim slots) Switch SIM card" />
 
             <TextView
                 android:id="@+id/simInfoTextView"
@@ -120,7 +120,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
-                android:text="(switch sim slots)切换sim卡"
+                android:text="(switch sim slots) Switch SIM card"
                 android:textColor="#000000"
                 android:textSize="14sp"
                 android:maxLines="2" />
@@ -140,7 +140,7 @@
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
                 android:layout_gravity="fill_horizontal"
-                android:text="显示8.8.8" />
+                android:text="Show 8.8.8" />
 
             <Button
                 android:id="@+id/button3"
@@ -148,7 +148,7 @@
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
                 android:layout_gravity="fill_horizontal"
-                android:text="测试(test) led8" />
+                android:text="Test LED8" />
 
             <Button
                 android:id="@+id/button5_camera_led"
@@ -156,7 +156,7 @@
                 android:layout_height="wrap_content"
                 android:layout_columnWeight="1"
                 android:layout_gravity="fill_horizontal"
-                android:text="relay_test_继电器测试" />
+                android:text="Relay test" />
 
         </GridLayout>
 
