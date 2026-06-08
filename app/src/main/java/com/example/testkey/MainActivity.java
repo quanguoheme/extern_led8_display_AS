@@ -286,7 +286,7 @@ public class MainActivity extends Activity {
     {
         // SIM card button
         Spinner spinner_sim = (Spinner) findViewById(R.id.spinner_sim);
-        String[] items = {"SIM 1", "SIM 2", "SIM 3"};
+        String[] items = {"SIM 3", "SIM 2", "SIM 1"};
         ArrayAdapter<String> adapter = new ArrayAdapter(this,android.R.layout.simple_spinner_item,items);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner_sim.setAdapter(adapter);
