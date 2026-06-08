@@ -81,10 +81,9 @@ public class MainActivity extends Activity {
     int flag_led=2;
 	 final static String TAG="TestKey";
     private static final String TAG_QR = "MainActivity";
-   // private ImageView qrCodeImageView;
-    //private TextView qrContentTextView;
-    private String deviceInfo = "";
-    private static final int CHECK_INTERVAL = 500; // 500ms
+    private ImageView qrCodeImageView;
+    private TextView qrContentTextView;
+    private static final int QR_CHECK_INTERVAL = 10000; // 10 seconds
     private static final int REQUEST_READ_PHONE_STATE = 1001;
     private static final int SIM_CHECK_INTERVAL = 1000;
     private static final int SIM_CHECK_TIMEOUT = 300000;
@@ -120,16 +119,16 @@ public class MainActivity extends Activity {
         Log.d(TAG, "test_led8__version_4");
 
         // Initialize views
-      //  qrCodeImageView = findViewById(R.id.qrCodeImageView);
-       // qrContentTextView = findViewById(R.id.qrContentTextView);
-        simInfoTextView = (TextView) findViewById(R.id.qrContentTextView2);
+        qrCodeImageView = (ImageView) findViewById(R.id.qrCodeImageView);
+        qrContentTextView = (TextView) findViewById(R.id.qrContentTextView);
+        simInfoTextView = (TextView) findViewById(R.id.simInfoTextView);
         powerStatusTextView = (TextView) findViewById(R.id.textview_poower);
         accStatusTextView = (TextView) findViewById(R.id.textview_acc_status);
         updatePowerStatusText(R.string.power_status_ac_unplugged_not_charging);
         updateAccStatus();
         requestReadPhoneStateIfNeeded();
         
-        // Start checking device info
+        // Start checking QR data
         startDeviceInfoCheck();
 
         // relay  test   继电器 测试
@@ -279,6 +278,46 @@ public class MainActivity extends Activity {
         } else {
             accStatusTextView.setText(R.string.acc_status_unplugged);
         }
+    }
+
+    private String getImeiFromRootCommand() {
+        String output = execCommand("cmd phone get-imei 0");
+        if (TextUtils.isEmpty(output)) {
+            return "";
+        }
+
+        String[] lines = output.split("\n");
+        for (String rawLine : lines) {
+            if (TextUtils.isEmpty(rawLine)) {
+                continue;
+            }
+
+            String line = rawLine.trim();
+            if (line.startsWith("Device IMEI:")) {
+                return line.substring("Device IMEI:".length()).trim();
+            }
+        }
+
+        return "";
+    }
+
+    private void showQrWaitingState() {
+        if (qrCodeImageView != null) {
+            qrCodeImageView.setImageBitmap(null);
+            qrCodeImageView.setVisibility(View.INVISIBLE);
+        }
+        if (qrContentTextView != null) {
+            qrContentTextView.setText("IMEI 未就绪，10 秒后重试");
+        }
+    }
+
+    private String buildQrContent() {
+        String serialNumber = getSystemProperty("ro.serialno", "");
+        String imei = getImeiFromRootCommand();
+        if (TextUtils.isEmpty(serialNumber) || TextUtils.isEmpty(imei)) {
+            return "";
+        }
+        return "SN: " + serialNumber + ",IMEI: " + imei + "\n";
     }
 
     //sim 卡切换
@@ -624,7 +663,7 @@ public class MainActivity extends Activity {
             return;
         }
 
-        final String displayText = text.length() > 11 ? text.substring(0, 11) : text;
+        final String displayText = text.length() > 100 ? text.substring(0, 100) : text;
         simInfoTextView.setText(displayText);
     }
 
@@ -917,46 +956,19 @@ public class MainActivity extends Activity {
 
     @SuppressLint("HardwareIds")
     private void generateQRCode() {
-        StringBuilder info = new StringBuilder();
-        StringBuilder info2 = new StringBuilder();
+        String qrContent = buildQrContent();
 
-        // Get serial number from system property
-        String serialNumber = getSystemProperty("ro.serialno", "");
-        info.append("SN: ").append(serialNumber).append("\n");
-        info2.append("SN: ").append(serialNumber).append(",");
-
-        // Get IMEIs from system property
-        String imeisStr = getSystemProperty("persist.apr.imeis", "");
-        if (!TextUtils.isEmpty(imeisStr)) {
-            String[] imeis = imeisStr.split(",");
-            if (imeis.length > 0) {
-                String imei1 = imeis[0];
-                info.append("IMEI1: ").append(imei1).append("\n");
-                info2.append("IMEI1: ").append(imei1).append(",");
-                
-                if (imeis.length > 1) {
-                    String imei2 = imeis[1].split("@")[0]; // Remove @sync suffix
-                    info.append("IMEI2: ").append(imei2);
-                    info2.append("IMEI2: ").append(imei2);
-                }
-            }
+        if (TextUtils.isEmpty(qrContent)) {
+            showQrWaitingState();
+            return;
         }
-        
-        deviceInfo = info.toString();
-        
-        // Parse the deviceInfo to check if valid
-        String[] lines = deviceInfo.split("\n");
-        String imei1 = "", imei2 = "";
-        
-        for (String line : lines) {
-            if (line.startsWith("IMEI1:")) {
-                imei1 = line.substring(6).trim();
-            } else if (line.startsWith("IMEI2:")) {
-                imei2 = line.substring(6).trim();
-            }
+        if (qrContentTextView != null) {
+            qrContentTextView.setText(qrContent);
         }
-        deviceInfo= info2.toString()+"\n";
-        // Check if both IMEIs are valid
+        if (qrCodeImageView != null) {
+            qrCodeImageView.setVisibility(View.VISIBLE);
+        }
+        createQRCode(qrContent);
 
     }
 
@@ -972,6 +984,13 @@ public class MainActivity extends Activity {
     }
 
     private void createQRCode(String content) {
+        if (TextUtils.isEmpty(content)) {
+            if (qrCodeImageView != null) {
+                qrCodeImageView.setImageBitmap(null);
+                qrCodeImageView.setVisibility(View.INVISIBLE);
+            }
+            return;
+        }
         QRCodeWriter writer = new QRCodeWriter();
         try {
             BitMatrix bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, 512, 512);
@@ -985,7 +1004,10 @@ public class MainActivity extends Activity {
                 }
             }
             
-            //qrCodeImageView.setImageBitmap(bmp);
+            if (qrCodeImageView != null) {
+                qrCodeImageView.setVisibility(View.VISIBLE);
+                qrCodeImageView.setImageBitmap(bmp);
+            }
         } catch (WriterException e) {
             Log.e(TAG_QR, "Error generating QR code: " + e.getMessage());
         }
@@ -1000,7 +1022,7 @@ public class MainActivity extends Activity {
         checkDeviceInfo();
     }
 
-    private final Runnable mCheckRunnable = new Runnable() {
+    private final Runnable mQrCheckRunnable = new Runnable() {
         @Override
         public void run() {
             checkDeviceInfo();
@@ -1008,36 +1030,29 @@ public class MainActivity extends Activity {
     };
 
     private void checkDeviceInfo() {
-        // Get device info using existing reflection method
-        generateQRCode();
-        
-        // Parse the deviceInfo to check if valid
-        String[] lines = deviceInfo.split("\n");
-        String imei1 = "", imei2 = "";
-        
-        for (String line : lines) {
-            if (line.startsWith("IMEI1:")) {
-                imei1 = line.substring(6).trim();
-            } else if (line.startsWith("IMEI2:")) {
-                imei2 = line.substring(6).trim();
+        String qrContent = buildQrContent();
+
+        if (!TextUtils.isEmpty(qrContent)) {
+            if (qrContentTextView != null) {
+                qrContentTextView.setText(qrContent);
             }
-        }
-        
-        // Check if both IMEIs are valid
-        if (!TextUtils.isEmpty(imei1) && imei1.length() > 5 
-            && !TextUtils.isEmpty(imei2) && imei2.length() > 5) {
-            // Success - stop checking
+            if (qrCodeImageView != null) {
+                qrCodeImageView.setVisibility(View.VISIBLE);
+            }
+            createQRCode(qrContent);
             isChecking = false;
+            mHandler.removeCallbacks(mQrCheckRunnable);
         } else {
-            // Not successful yet - schedule next check
-            mHandler.postDelayed(mCheckRunnable, CHECK_INTERVAL);
+            showQrWaitingState();
+            mHandler.removeCallbacks(mQrCheckRunnable);
+            mHandler.postDelayed(mQrCheckRunnable, QR_CHECK_INTERVAL);
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mHandler.removeCallbacks(mCheckRunnable);
+        mHandler.removeCallbacks(mQrCheckRunnable);
         mHandler.removeCallbacks(mSimCheckRunnable);
         mHandler.removeCallbacks(mAccStatusRunnable);
         unregisterPowerStatusReceiver();

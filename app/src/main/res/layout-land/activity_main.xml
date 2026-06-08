@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="8dp">
 
         <TextView
             android:id="@+id/textView1"
@@ -25,15 +25,14 @@
             android:id="@+id/qr_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
             android:orientation="horizontal"
-            android:padding="8dp">
+            android:padding="4dp">
 
             <ImageView
                 android:id="@+id/qrCodeImageView"
-                android:layout_width="160dp"
-                android:layout_height="160dp"
-                android:layout_marginEnd="12dp"
+                android:layout_width="136dp"
+                android:layout_height="136dp"
+                android:layout_marginEnd="10dp"
                 android:contentDescription="二维码"
                 android:scaleType="fitCenter"
                 tools:src="@android:drawable/ic_menu_gallery" />
@@ -50,19 +49,29 @@
                     android:layout_height="wrap_content"
                     android:text="设备二维码"
                     android:textColor="#000000"
-                    android:textSize="16sp"
+                    android:textSize="15sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/qrContentTextView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="6dp"
+                    android:text="二维码内容"
                     android:textColor="#222222"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:maxLines="4"
-                    android:ellipsize="end"
-                    android:text="二维码内容" />
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/simInfoTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="(switch sim slots)切换sim卡"
+                    android:textColor="#000000"
+                    android:textSize="13sp"
+                    android:maxLines="2" />
             </LinearLayout>
         </LinearLayout>
 
@@ -70,10 +79,10 @@
             android:id="@+id/power_status_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_horizontal"
             android:orientation="horizontal"
-            android:padding="8dp">
+            android:padding="4dp">
 
             <TextView
                 android:id="@+id/textview_poower"
@@ -81,31 +90,31 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:text="@string/power_status_ac_unplugged_not_charging"
                 android:textColor="#000000"
-                android:textSize="16sp" />
+                android:textSize="15sp" />
 
             <TextView
                 android:id="@+id/textview_acc_status"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:text="@string/acc_status_unplugged"
                 android:textColor="#000000"
-                android:textSize="16sp" />
+                android:textSize="15sp" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="8dp">
+            android:padding="4dp">
 
             <Spinner
                 android:id="@+id/spinner_sim"
@@ -115,21 +124,20 @@
                 android:text="(switch sim slots)切换sim卡" />
 
             <TextView
-                android:id="@+id/simInfoTextView"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
-                android:text="(switch sim slots)切换sim卡"
-                android:textColor="#000000"
-                android:textSize="14sp"
-                android:maxLines="2" />
+                android:text="SIM切换后会自动刷新状态"
+                android:textColor="#444444"
+                android:textSize="12sp"
+                android:maxLines="1" />
         </LinearLayout>
 
         <GridLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="10dp"
             android:columnCount="2"
             android:rowCount="2"
             android:useDefaultMargins="true">
