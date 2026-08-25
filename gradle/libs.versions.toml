@@ -1,0 +1,17 @@
+[versions]
+agp = "9.2.1"
+appcompat = "1.6.1"
+zxing = "3.5.3"
+junit = "4.13.2"
+ext-junit = "1.1.5"
+espresso = "3.5.1"
+
+[libraries]
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "ext-junit" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }

@@ -673,12 +673,16 @@ public class MainActivity extends Activity {
         handler2.post(new Runnable() {
             @Override
             public void run() {
-                //  Toast.makeText(context, text, Toast.LENGTH_SHORT).show();
-                Toast toast=Toast.makeText(context, str, Toast.LENGTH_SHORT);
-                toast.setGravity(Gravity.CENTER,0,200);
-                LinearLayout linearLayout = (LinearLayout) toast.getView();
-                TextView messageTextView = (TextView) linearLayout.getChildAt(0);
-                messageTextView.setTextSize(36);
+                Toast toast = Toast.makeText(context, str, Toast.LENGTH_SHORT);
+                toast.setGravity(Gravity.CENTER, 0, 200);
+                View view = toast.getView();
+                if (view instanceof LinearLayout) {
+                    LinearLayout linearLayout = (LinearLayout) view;
+                    if (linearLayout.getChildCount() > 0 && linearLayout.getChildAt(0) instanceof TextView) {
+                        TextView messageTextView = (TextView) linearLayout.getChildAt(0);
+                        messageTextView.setTextSize(36);
+                    }
+                }
                 toast.show();
             }
         });
