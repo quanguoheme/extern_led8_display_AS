@@ -1,8 +1,8 @@
-# External 8-Segment LED Display & Hardware Integration Test Application (SC200 / GC111) - Project Documentation & Changelog
+# External 8-Segment LED Display & Hardware Integration Test Application (SC200 / 111) - Project Documentation & Changelog
 
 ## 1. Project Overview
 
-This project (`extern_led8_display_AS` / `com.example.extern_led8_display_for_sc200_gc111_c`) is a dedicated hardware integration testing and control application built for Android embedded industrial / vehicle-mounted devices based on the **Quectel SC200 / GC111** hardware platform.
+This project (`extern_led8_display_AS` / `com.example.extern_led8_display_for_sc200_111_c`) is a dedicated hardware integration testing and control application built for Android embedded industrial / vehicle-mounted devices based on the **Quectel SC200 / 111** hardware platform.
 
 The application integrates control over an external 3-digit 8-segment LED display, dynamic 3-slot SIM card switching with power-cycle fault tolerance, vehicle ignition (ACC) status detection, AC power and battery charge state monitoring, dynamic device SN & IMEI QR code generation, relay pulse triggering, full physical keypad event mapping, and low-level hardware JNI driver interfaces.
 
@@ -11,7 +11,7 @@ The application integrates control over an external 3-digit 8-segment LED displa
 ## 2. Hardware & System Specifications
 
 ### 2.1 Hardware & OS Requirements
-- **Target Chipset / Motherboard**: Quectel SC200 / GC111 Series
+- **Target Chipset / Motherboard**: Quectel SC200 / 111 Series
 - **Operating System**: Android 10 (API Level 29) through Android 14
 - **Display Resolution**: 800 × 480 (Optimized for Landscape mode)
 - **Display Density**: 160 dpi (1dp = 1px)
@@ -111,7 +111,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 # 4. Grant required runtime permissions with root
 adb root
-adb shell pm grant com.example.extern_led8_display_for_sc200_gc111_c android.permission.READ_PHONE_STATE
+adb shell pm grant com.example.extern_led8_display_for_sc200_111_c android.permission.READ_PHONE_STATE
 ```
 
 ---
